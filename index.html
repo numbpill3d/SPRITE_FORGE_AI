@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sprite Forge AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --color-bg: #090011;
+        --color-window-bg: #1a0b2e;
+        --color-border-light: #e879f9; /* Pink-400 */
+        --color-border-dark: #86198f;  /* Fuchsia-800 */
+        --color-text: #f0abfc;
+      }
+      
+      body {
+        background-color: var(--color-bg);
+        /* Abstract Tech Grid Background */
+        background-image: 
+          linear-gradient(rgba(24, 0, 43, 0.8) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(24, 0, 43, 0.8) 1px, transparent 1px),
+          radial-gradient(#2e1065 1px, transparent 1px);
+        background-size: 40px 40px, 40px 40px, 8px 8px;
+        background-position: center;
+        color: var(--color-text);
+        font-family: 'VT323', monospace;
+        overflow-x: hidden;
+      }
+
+      /* Scanline Overlay */
+      .scanlines {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+        background-size: 100% 4px;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.6;
+      }
+
+      /* Custom Scrollbar - Retro Dark */
+      ::-webkit-scrollbar {
+        width: 16px;
+        background: #0f0518;
+        border-left: 1px solid #86198f;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c026d3; /* Fuchsia-600 */
+        border: 2px solid #0f0518;
+        box-shadow: inset 1px 1px 0 #f5d0fe, inset -1px -1px 0 #701a75;
+      }
+      ::-webkit-scrollbar-button {
+        background: #4a044e;
+        height: 16px;
+      }
+
+      .font-pixel { font-family: 'Press Start 2P', cursive; }
+      .font-tech { font-family: 'Share Tech Mono', monospace; }
+      
+      /* Window Chrome Styles */
+      .window-frame {
+        background: var(--color-window-bg);
+        border: 2px solid #e879f9;
+        box-shadow: 
+          4px 4px 0px #4a044e, /* Dark shadow */
+          -1px -1px 0px #f5d0fe; /* Highlight */
+        position: relative;
+      }
+
+      .window-header {
+        background: linear-gradient(90deg, #86198f 0%, #c026d3 50%, #86198f 100%);
+        border-bottom: 2px solid #e879f9;
+        padding: 4px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: white;
+        text-shadow: 1px 1px 0 #000;
+        font-family: 'Press Start 2P', cursive;
+        font-size: 10px;
+        letter-spacing: 1px;
+      }
+
+      /* Checkered Background Utility */
+      .bg-checkered {
+        background-color: #000;
+        background-image:
+          linear-gradient(45deg, #1a0b2e 25%, transparent 25%, transparent 75%, #1a0b2e 75%, #1a0b2e),
+          linear-gradient(45deg, #1a0b2e 25%, transparent 25%, transparent 75%, #1a0b2e 75%, #1a0b2e);
+        background-size: 20px 20px;
+        background-position: 0 0, 10px 10px;
+      }
+
+      /* CRT Flicker Animation */
+      @keyframes flicker {
+        0% { opacity: 0.97; }
+        5% { opacity: 0.92; }
+        10% { opacity: 0.95; }
+        15% { opacity: 0.85; }
+        20% { opacity: 0.95; }
+        50% { opacity: 0.98; }
+        80% { opacity: 0.92; }
+        100% { opacity: 0.97; }
+      }
+      .animate-flicker {
+        animation: flicker 0.15s infinite;
+        pointer-events: none;
+      }
+
+      /* Text Glitch Effect */
+      .glitch {
+        position: relative;
+      }
+      .glitch::before, .glitch::after {
+        content: attr(data-text);
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: var(--color-window-bg);
+      }
+      .glitch::before {
+        left: 2px;
+        text-shadow: -1px 0 #ff00c1;
+        clip: rect(44px, 450px, 56px, 0);
+        animation: glitch-anim 5s infinite linear alternate-reverse;
+      }
+      .glitch::after {
+        left: -2px;
+        text-shadow: -1px 0 #00fff9;
+        clip: rect(44px, 450px, 56px, 0);
+        animation: glitch-anim2 5s infinite linear alternate-reverse;
+      }
+
+      @keyframes glitch-anim {
+        0% { clip: rect(2px, 9999px, 85px, 0); }
+        20% { clip: rect(68px, 9999px, 16px, 0); }
+        40% { clip: rect(12px, 9999px, 34px, 0); }
+        60% { clip: rect(89px, 9999px, 2px, 0); }
+        80% { clip: rect(54px, 9999px, 67px, 0); }
+        100% { clip: rect(23px, 9999px, 92px, 0); }
+      }
+      @keyframes glitch-anim2 {
+        0% { clip: rect(65px, 9999px, 23px, 0); }
+        20% { clip: rect(12px, 9999px, 86px, 0); }
+        40% { clip: rect(45px, 9999px, 3px, 0); }
+        60% { clip: rect(78px, 9999px, 100px, 0); }
+        80% { clip: rect(3px, 9999px, 33px, 0); }
+        100% { clip: rect(10px, 9999px, 55px, 0); }
+      }
+
+      .btn-retro {
+        border: 2px solid #e879f9;
+        background: #2e1065;
+        box-shadow: 2px 2px 0 #000;
+        transition: all 0.1s;
+      }
+      .btn-retro:active {
+        transform: translate(2px, 2px);
+        box-shadow: 0 0 0 #000;
+      }
+      .btn-retro:disabled {
+        border-color: #701a75;
+        color: #701a75;
+        background: #1a0b2e;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.1/",
+    "react": "https://esm.sh/react@^19.2.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.1/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.560.0",
+    "jszip": "https://esm.sh/jszip@^3.10.1",
+    "file-saver": "https://esm.sh/file-saver@^2.0.5",
+    "gifenc": "https://esm.sh/gifenc@1.0.3"
+  }
+}
+</script>
+</head>
+  <body>
+    <div class="scanlines"></div>
+    <div id="root"></div>
+  </body>
+</html>

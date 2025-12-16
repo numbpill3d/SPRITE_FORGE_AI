@@ -1,0 +1,7 @@
+{
+  "name": "PixelForge AI",
+  "description": "Transform any image into game-ready pixel art sprite sheets with automatic limb detection and animation generation.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
