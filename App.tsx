@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { analyzeCharacter, generateSpriteSheet } from './services/geminiService';
-import { PixelStyle, CharacterAnalysis, GenerationConfig, AnimationState } from './types';
+import { PixelStyle, CharacterAnalysis, GenerationConfig, AnimationState, SpriteOffsets } from './types';
 import Dropzone from './components/Dropzone';
 import AnalysisPanel from './components/AnalysisPanel';
 import SpritePreview from './components/SpritePreview';
 import { 
   Terminal, Cpu, Save, Zap, Ghost, Minimize2, X, Maximize2, 
-  Disc, MonitorPlay, Layers, ArrowRight, ShieldCheck, Skull, Activity
+  Disc, MonitorPlay, Layers, ArrowRight, ShieldCheck, Skull, Activity, Target
 } from 'lucide-react';
 import JSZip from 'jszip';
 import saveAs from 'file-saver';
@@ -17,6 +17,13 @@ const { GIFEncoder, quantize, applyPalette } = (gifenc as any).default || gifenc
 type Tab = 'ROOT' | 'CONFIG' | 'VISUALIZER';
 type LoadingStep = 'idle' | 'analyzing' | 'rigging' | 'rendering' | 'polishing' | 'complete';
 
+const INITIAL_OFFSETS: SpriteOffsets = {
+  [AnimationState.Idle]: { x: 0, y: 0 },
+  [AnimationState.Run]: { x: 0, y: 0 },
+  [AnimationState.Jump]: { x: 0, y: 0 },
+  [AnimationState.Attack]: { x: 0, y: 0 },
+};
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('ROOT');
   
@@ -26,6 +33,7 @@ const App: React.FC = () => {
   const [spriteSheet, setSpriteSheet] = useState<string | null>(null);
   const [animationState, setAnimationState] = useState<AnimationState>(AnimationState.Run);
   const [upscaleExport, setUpscaleExport] = useState(true);
+  const [offsets, setOffsets] = useState<SpriteOffsets>(INITIAL_OFFSETS);
   
   const [config, setConfig] = useState<GenerationConfig>({
     style: PixelStyle.Bit16,
@@ -135,9 +143,19 @@ const App: React.FC = () => {
     else if (animationState === AnimationState.Jump) row = 2;
     else if (animationState === AnimationState.Attack) row = 3;
 
+    const offset = offsets[animationState] || { x: 0, y: 0 };
+
     for (let i = 0; i < config.cols; i++) {
       ctx.clearRect(0,0,frameW,frameH);
-      ctx.drawImage(fullCanvas, i * frameW, row * frameH, frameW, frameH, 0,0, frameW, frameH);
+      // Apply manual centering offsets for export as well
+      ctx.drawImage(
+        fullCanvas, 
+        (i * frameW) + (offset.x * scale), 
+        (row * frameH) + (offset.y * scale), 
+        frameW, frameH, 
+        0, 0, 
+        frameW, frameH
+      );
       const data = ctx.getImageData(0,0,frameW, frameH).data;
       const palette = quantize(data, 256);
       const index = applyPalette(data, palette);
@@ -184,8 +202,8 @@ const App: React.FC = () => {
        
        {/* Ambient Tech Grid Background */}
        <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute top-1/4 left-1/4 text-fuchsia-900/10 font-pixel text-[20vw] select-none mix-blend-screen -rotate-12">SYSTEM</div>
-          <div className="absolute bottom-1/4 right-1/4 text-fuchsia-900/10 font-pixel text-[20vw] select-none mix-blend-screen rotate-12">CORE</div>
+          <div className="absolute top-1/4 left-1/4 text-fuchsia-900/10 font-pixel text-[20vw] select-none mix-blend-screen -rotate-12">ANIMUS</div>
+          <div className="absolute bottom-1/4 right-1/4 text-fuchsia-900/10 font-pixel text-[20vw] select-none mix-blend-screen rotate-12">ENGINE</div>
        </div>
 
        <div className="w-full max-w-7xl grid grid-cols-12 gap-8 relative z-10 items-stretch">
@@ -195,11 +213,14 @@ const App: React.FC = () => {
              
              {/* Header Display */}
              <div className="border-2 border-fuchsia-500 bg-black p-6 text-center shadow-[6px_6px_0_#701a75]">
-                <h1 className="text-3xl font-pixel text-white glitch mb-2 tracking-tighter" data-text="FORGE_OS">FORGE_OS</h1>
+                <h1 className="text-3xl font-pixel text-white glitch mb-2 tracking-tighter uppercase" data-text="ANIMUS ENGINE">ANIMUS ENGINE</h1>
                 <div className="h-0.5 bg-fuchsia-800 w-full mb-3 opacity-50"></div>
-                <div className="flex items-center justify-center gap-2 text-fuchsia-400 font-tech text-xs tracking-widest animate-pulse">
-                   <Activity size={12} />
-                   <span>NEURAL_LINK: ACTIVE</span>
+                <div className="flex flex-col items-center justify-center gap-1 text-fuchsia-400 font-tech text-[10px] tracking-widest">
+                   <div className="flex items-center gap-2 animate-pulse">
+                      <Activity size={10} />
+                      <span>IMAGE TO ANIMATED SPRITE SHEET</span>
+                   </div>
+                   <span className="text-cyan-500 opacity-60">LINK_STABLE // BUFF_READY</span>
                 </div>
              </div>
 
@@ -238,7 +259,7 @@ const App: React.FC = () => {
              
              <div className="window-frame flex-1 flex flex-col border-4">
                 <div className="window-header justify-between py-3">
-                   <span className="flex items-center gap-3 ml-2"><MonitorPlay size={14} className="text-cyan-400" /> VIRTUAL_PIXEL_ENGINE_V3</span>
+                   <span className="flex items-center gap-3 ml-2"><MonitorPlay size={14} className="text-cyan-400" /> VIRTUAL_PIXEL_ENGINE_V4</span>
                    <div className="flex gap-4 mr-4 font-mono text-[9px] text-fuchsia-400/60 uppercase">
                       <span>Thread_Active</span>
                       <span className="text-green-500">Secure</span>
@@ -259,7 +280,7 @@ const App: React.FC = () => {
                    {activeTab === 'ROOT' && (
                       <div className="flex-1 flex flex-col items-center justify-center relative z-10 gap-8">
                          <div className="text-center">
-                            <h2 className="text-4xl font-pixel text-white mb-3 tracking-tighter">DATA_INGRESS</h2>
+                            <h2 className="text-4xl font-pixel text-white mb-3 tracking-tighter uppercase">Data_Ingress</h2>
                             <p className="font-tech text-fuchsia-600 text-lg uppercase tracking-[0.3em]">Supply Entity Reference</p>
                          </div>
                          <div className="w-full max-w-xl h-80 shadow-[0_0_50px_rgba(112,26,117,0.3)] border-2 border-fuchsia-900">
@@ -316,6 +337,8 @@ const App: React.FC = () => {
                                config={config} 
                                animationState={animationState}
                                setAnimationState={setAnimationState}
+                               offsets={offsets}
+                               setOffsets={setOffsets}
                             />
                          ) : (
                             <div className="flex-1 border-4 border-dashed border-fuchsia-950 flex flex-col items-center justify-center text-fuchsia-900 font-pixel gap-4">
@@ -338,11 +361,11 @@ const App: React.FC = () => {
           <div className="bg-black/80 backdrop-blur-md border border-fuchsia-900 px-6 py-2 rounded-full flex items-center gap-6">
              <div className="flex items-center gap-2 text-[10px] font-tech text-fuchsia-700">
                 <Layers size={12} />
-                <span>VER: 4.1.0-STABLE</span>
+                <span>VER: 5.0.0-ANIMUS</span>
              </div>
              <div className="h-4 w-px bg-fuchsia-900"></div>
              <div className="text-[10px] font-tech text-fuchsia-500 uppercase tracking-widest">
-                FORGE_NET // ACCESS_GRANTED
+                ANIMUS_LINK // ACCESS_GRANTED
              </div>
           </div>
        </footer>

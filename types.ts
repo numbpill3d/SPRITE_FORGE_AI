@@ -41,6 +41,10 @@ export interface GenerationConfig {
   cols: number;
 }
 
+export interface SpriteOffsets {
+  [key: string]: { x: number; y: number };
+}
+
 export interface SpriteSheetData {
   imageUrl: string;
   config: GenerationConfig;

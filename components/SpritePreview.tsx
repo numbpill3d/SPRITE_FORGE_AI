@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, ZoomIn, 
-  Palette, Sun, Moon, Grid, Monitor, Zap
+  Palette, Sun, Moon, Grid, Monitor, Zap, Move, Target
 } from 'lucide-react';
-import { AnimationState, GenerationConfig } from '../types';
+import { AnimationState, GenerationConfig, SpriteOffsets } from '../types';
 import { useSpriteAnimation } from '../hooks/useSpriteAnimation';
 
 interface SpritePreviewProps {
@@ -12,18 +12,23 @@ interface SpritePreviewProps {
   config: GenerationConfig;
   animationState: AnimationState;
   setAnimationState: (state: AnimationState) => void;
+  offsets: SpriteOffsets;
+  setOffsets: (offsets: SpriteOffsets) => void;
 }
 
 const SpritePreview: React.FC<SpritePreviewProps> = ({ 
   spriteSheetUrl, 
   config,
   animationState,
-  setAnimationState
+  setAnimationState,
+  offsets,
+  setOffsets
 }) => {
   const [isPlaying, setIsPlaying] = useState(true);
-  const [fps, setFps] = useState(8);
-  const [scale, setScale] = useState(3); 
+  const [fps, setFps] = useState(10);
+  const [scale, setScale] = useState(4); 
   const [bgMode, setBgMode] = useState<'dark' | 'light' | 'green'>('dark');
+  const [showGrid, setShowGrid] = useState(true);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -44,12 +49,21 @@ const SpritePreview: React.FC<SpritePreviewProps> = ({
     setManualFrame(next);
   };
 
+  const updateOffset = (axis: 'x' | 'y', value: number) => {
+    setOffsets({
+      ...offsets,
+      [animationState]: {
+        ...offsets[animationState],
+        [axis]: value
+      }
+    });
+  };
+
   useEffect(() => {
     const img = new Image();
     img.src = spriteSheetUrl;
     imgRef.current = img;
     img.onload = () => {
-      // Refresh the view once the image is definitely ready
       setManualFrame(0);
     };
   }, [spriteSheetUrl]);
@@ -70,7 +84,6 @@ const SpritePreview: React.FC<SpritePreviewProps> = ({
       const img = imgRef.current;
 
       if (canvas && ctx && img && img.complete && img.naturalWidth > 0) {
-        // Pixel-perfect sizing: Ensure internal resolution matches CSS display size
         const displayWidth = canvas.clientWidth;
         const displayHeight = canvas.clientHeight;
         
@@ -80,11 +93,9 @@ const SpritePreview: React.FC<SpritePreviewProps> = ({
         }
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Ensure no interpolation for sharp pixel art
         ctx.imageSmoothingEnabled = false;
 
-        // 1. Draw Checkerboard Background
+        // 1. Draw Background
         let c1 = '#000';
         let c2 = '#0a0a0a';
         if (bgMode === 'light') { c1 = '#fff'; c2 = '#f0f0f0'; }
@@ -98,118 +109,141 @@ const SpritePreview: React.FC<SpritePreviewProps> = ({
             }
         }
 
-        // 2. Slicing Logic (Robust Grid Calculation)
-        // We calculate frame size based on natural dimensions to handle non-1024 sheets if AI deviates
+        // 2. Logic for manual optimization
+        const currentOffset = offsets[animationState] || { x: 0, y: 0 };
         const frameW = img.naturalWidth / config.cols;
         const frameH = img.naturalHeight / config.rows;
         
-        // Use exact integer scale for crispness
         const destW = Math.round(frameW * scale);
         const destH = Math.round(frameH * scale);
         
-        // Center drawing point in viewport
         const dx = Math.floor((canvas.width - destW) / 2);
         const dy = Math.floor((canvas.height - destH) / 2);
 
-        // Calculate source coordinates using current frame and row
         const row = getRowIndex(animationState);
-        const sx = Math.floor(currentFrame * frameW);
-        const sy = Math.floor(row * frameH);
+        // Apply manual nudge offsets to the source retrieval
+        const sx = Math.floor(currentFrame * frameW) + currentOffset.x;
+        const sy = Math.floor(row * frameH) + currentOffset.y;
 
-        // Draw the current sprite frame
-        // Using Math.floor on source to avoid bleeding into adjacent frames
         ctx.drawImage(
           img, 
-          sx, sy, Math.floor(frameW), Math.floor(frameH), // Source
-          dx, dy, destW, destH                            // Destination
+          sx, sy, Math.floor(frameW), Math.floor(frameH),
+          dx, dy, destW, destH
         );
         
-        // 3. Status Bar/Indicator (Faint)
-        ctx.strokeStyle = 'rgba(217, 70, 239, 0.1)'; // Very faint fuchsia
-        ctx.lineWidth = 1;
-        ctx.strokeRect(dx, dy, destW, destH);
+        // 3. Optional Overlay Helpers
+        if (showGrid) {
+            ctx.strokeStyle = 'rgba(34, 211, 238, 0.2)'; // Cyan faint
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2);
+            ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.strokeStyle = 'rgba(217, 70, 239, 0.4)'; // Fuchsia frame
+            ctx.lineWidth = 1;
+            ctx.strokeRect(dx, dy, destW, destH);
+        }
       }
-  }, [currentFrame, animationState, config, scale, bgMode, spriteSheetUrl]);
+  }, [currentFrame, animationState, config, scale, bgMode, spriteSheetUrl, offsets, showGrid]);
 
   return (
     <div className="flex flex-col h-full bg-[#05000a] border-t-2 border-fuchsia-900/50">
        
        {/* Monitor Screen Area */}
-       <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-black shadow-[inset_0_0_80px_rgba(0,0,0,1)] p-6">
+       <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-black shadow-[inset_0_0_120px_rgba(0,0,0,1)] p-4">
           <canvas 
             ref={canvasRef} 
-            className="w-full h-full max-w-[640px] max-h-[640px] object-contain pixelated cursor-crosshair"
+            className="w-full h-full max-w-[700px] max-h-[700px] object-contain pixelated cursor-move"
           />
           
-          {/* CRT/Digital Distortions */}
-          <div className="absolute inset-0 pointer-events-none opacity-25 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] bg-[length:100%_4px,3px_100%]"></div>
+          <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.02),rgba(0,255,0,0.01),rgba(0,0,255,0.02))] bg-[length:100%_4px,3px_100%]"></div>
           
-          {/* OSD (On-Screen Display) Controls */}
+          {/* Quick Tools */}
           <div className="absolute top-6 right-6 flex flex-col gap-3">
              <button onClick={() => setBgMode(prev => prev === 'light' ? 'dark' : prev === 'dark' ? 'green' : 'light')} 
-               className="w-12 h-12 bg-black/80 border border-fuchsia-800 text-fuchsia-500 hover:text-cyan-400 hover:border-cyan-500 flex items-center justify-center transition-all shadow-lg active:scale-90"
+               className="w-10 h-10 bg-black/60 border border-fuchsia-900 text-fuchsia-600 hover:text-cyan-400 hover:border-cyan-500 flex items-center justify-center transition-all shadow-xl active:scale-90"
                title="Toggle Background">
-                <Palette size={20} />
+                <Palette size={18} />
              </button>
-             <button onClick={() => setScale(s => s >= 6 ? 1 : s + 1)} 
-               className="w-12 h-12 bg-black/80 border border-fuchsia-800 text-fuchsia-500 hover:text-cyan-400 hover:border-cyan-500 flex items-center justify-center transition-all shadow-lg active:scale-90"
-               title="Zoom Level">
-                <ZoomIn size={20} />
+             <button onClick={() => setShowGrid(!showGrid)} 
+               className={`w-10 h-10 bg-black/60 border ${showGrid ? 'border-cyan-500 text-cyan-400' : 'border-fuchsia-900 text-fuchsia-600'} hover:text-white flex items-center justify-center transition-all shadow-xl active:scale-90`}
+               title="Toggle Grid">
+                <Target size={18} />
+             </button>
+             <button onClick={() => setScale(s => s >= 8 ? 1 : s + 1)} 
+               className="w-10 h-10 bg-black/60 border border-fuchsia-900 text-fuchsia-600 hover:text-cyan-400 hover:border-cyan-500 flex items-center justify-center transition-all shadow-xl active:scale-90"
+               title="Zoom">
+                <ZoomIn size={18} />
              </button>
           </div>
 
-          {/* Frame Label */}
-          <div className="absolute bottom-6 left-6 font-mono text-[10px] text-fuchsia-900 uppercase tracking-widest bg-black/40 px-2 py-1 border border-fuchsia-950">
-            FRAME: {currentFrame.toString().padStart(2, '0')} // ROW: {getRowIndex(animationState)}
+          <div className="absolute bottom-6 left-6 font-mono text-[9px] text-fuchsia-900 uppercase tracking-widest bg-black/60 px-3 py-1.5 border border-fuchsia-950 flex gap-4">
+            <span>FRAME: {currentFrame.toString().padStart(2, '0')}</span>
+            <span>ROW: {getRowIndex(animationState)}</span>
+            <span>OFFSET: {offsets[animationState]?.x || 0}, {offsets[animationState]?.y || 0}</span>
           </div>
        </div>
 
-       {/* Control Deck (Integrated Dashboard) */}
-       <div className="bg-[#0f041d] p-5 border-t-2 border-fuchsia-900/80 flex flex-wrap gap-4 items-center justify-between font-tech">
+       {/* Control Deck */}
+       <div className="bg-[#0f041d] p-6 border-t-2 border-fuchsia-900/80 grid grid-cols-1 lg:grid-cols-3 gap-6 font-tech">
           
-          {/* Playback Group */}
-          <div className="flex items-center gap-6">
-             <div className="flex bg-black border-2 border-fuchsia-900 rounded p-1 shadow-inner">
-                <button onClick={() => handleStep(-1)} className="p-2.5 text-fuchsia-800 hover:text-white hover:bg-fuchsia-950 transition-colors"><SkipBack size={20} /></button>
-                <button onClick={() => setIsPlaying(!isPlaying)} className="p-2.5 text-cyan-400 hover:text-white hover:bg-cyan-900/40 mx-1 transition-all">
-                   {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
-                </button>
-                <button onClick={() => handleStep(1)} className="p-2.5 text-fuchsia-800 hover:text-white hover:bg-fuchsia-950 transition-colors"><SkipForward size={20} /></button>
-             </div>
-             
-             <div className="hidden lg:flex flex-col">
-                <span className="text-[10px] text-fuchsia-900 tracking-tighter uppercase font-bold">Signal_Status</span>
-                <div className="flex items-center gap-2">
-                   <div className={`w-2.5 h-2.5 rounded-none ${isPlaying ? "bg-green-500 shadow-[0_0_8px_#22c55e]" : "bg-red-600"}`} />
-                   <span className={`text-xs font-mono ${isPlaying ? "text-green-500" : "text-red-600"}`}>{isPlaying ? "LOCKED" : "WAITING"}</span>
+          {/* 1. Playback & State */}
+          <div className="flex flex-col gap-3">
+             <span className="text-[10px] text-fuchsia-900 tracking-widest uppercase font-bold">Logic_Control</span>
+             <div className="flex items-center gap-3">
+                <div className="flex bg-black border border-fuchsia-900 p-1">
+                   <button onClick={() => handleStep(-1)} className="p-2 text-fuchsia-800 hover:text-white hover:bg-fuchsia-950 transition-colors"><SkipBack size={18} /></button>
+                   <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 text-cyan-400 hover:text-white hover:bg-cyan-900/40 mx-1 transition-all">
+                      {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+                   </button>
+                   <button onClick={() => handleStep(1)} className="p-2 text-fuchsia-800 hover:text-white hover:bg-fuchsia-950 transition-colors"><SkipForward size={18} /></button>
                 </div>
-             </div>
-          </div>
-
-          {/* Configuration Group */}
-          <div className="flex flex-wrap gap-8 items-center">
-             <div className="flex flex-col items-end">
-                <span className="text-[10px] text-fuchsia-900 tracking-tighter uppercase font-bold">Refresh_Rate</span>
-                <div className="flex items-center gap-4">
-                   <input type="range" min="1" max="60" value={fps} onChange={e => setFps(parseInt(e.target.value))} 
-                     className="w-32 h-1.5 bg-fuchsia-950 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white" 
-                   />
-                   <span className="text-xs text-cyan-500 w-10 font-mono text-right">{fps}Hz</span>
-                </div>
-             </div>
-             
-             <div className="flex flex-col items-end">
-                <span className="text-[10px] text-fuchsia-900 tracking-tighter uppercase font-bold">Logic_State</span>
                 <select 
                     value={animationState} 
                     onChange={e => setAnimationState(e.target.value as AnimationState)}
-                    className="bg-black border-2 border-fuchsia-900 text-cyan-400 text-xs py-2 px-4 outline-none focus:border-cyan-500 hover:bg-fuchsia-950 transition-all font-mono uppercase tracking-widest"
+                    className="flex-1 bg-black border border-fuchsia-900 text-cyan-400 text-xs py-3 px-4 outline-none focus:border-cyan-500 hover:bg-fuchsia-950 transition-all font-mono uppercase tracking-widest"
                 >
                     <option value={AnimationState.Idle}>SYS_IDLE</option>
                     <option value={AnimationState.Run}>SYS_RUN</option>
                     <option value={AnimationState.Jump}>SYS_AIR</option>
                     <option value={AnimationState.Attack}>SYS_EXEC</option>
                 </select>
+             </div>
+          </div>
+
+          {/* 2. Manual Optimization (The "Nudge" Controls) */}
+          <div className="flex flex-col gap-3">
+             <span className="text-[10px] text-fuchsia-900 tracking-widest uppercase font-bold">Manual_Centering (Optimization)</span>
+             <div className="flex items-center gap-4 bg-black/40 border border-fuchsia-950 p-2">
+                <div className="flex-1 flex flex-col gap-1">
+                   <div className="flex justify-between text-[8px] text-fuchsia-700 uppercase"><span>X_Nudge</span><span>{offsets[animationState]?.x || 0}px</span></div>
+                   <input type="range" min="-128" max="128" value={offsets[animationState]?.x || 0} onChange={e => updateOffset('x', parseInt(e.target.value))} 
+                     className="w-full h-1 bg-fuchsia-950 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-cyan-500" 
+                   />
+                </div>
+                <div className="flex-1 flex flex-col gap-1">
+                   <div className="flex justify-between text-[8px] text-fuchsia-700 uppercase"><span>Y_Nudge</span><span>{offsets[animationState]?.y || 0}px</span></div>
+                   <input type="range" min="-128" max="128" value={offsets[animationState]?.y || 0} onChange={e => updateOffset('y', parseInt(e.target.value))} 
+                     className="w-full h-1 bg-fuchsia-950 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-cyan-500" 
+                   />
+                </div>
+                <button onClick={() => setOffsets({...offsets, [animationState]: {x:0, y:0}})} className="text-[8px] border border-fuchsia-900 px-2 py-1 hover:bg-fuchsia-900 transition-colors uppercase text-fuchsia-500">Reset</button>
+             </div>
+          </div>
+
+          {/* 3. Global Config */}
+          <div className="flex flex-col gap-3">
+             <span className="text-[10px] text-fuchsia-900 tracking-widest uppercase font-bold">Signal_Frequency</span>
+             <div className="flex items-center gap-4 py-2 px-1">
+                <input type="range" min="1" max="60" value={fps} onChange={e => setFps(parseInt(e.target.value))} 
+                  className="flex-1 h-1.5 bg-fuchsia-950 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white" 
+                />
+                <div className="w-16 text-center">
+                   <span className="text-xs text-cyan-400 font-mono block">{fps}Hz</span>
+                   <span className="text-[8px] text-fuchsia-800 uppercase block">Ref_Clk</span>
+                </div>
              </div>
           </div>
 
