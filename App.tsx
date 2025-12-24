@@ -6,7 +6,7 @@ import AnalysisPanel from './components/AnalysisPanel';
 import SpritePreview from './components/SpritePreview';
 import { 
   Terminal, Cpu, Save, Zap, Ghost, Minimize2, X, Maximize2, 
-  Disc, MonitorPlay, Layers, ArrowRight, ShieldCheck, Skull
+  Disc, MonitorPlay, Layers, ArrowRight, ShieldCheck, Skull, Activity
 } from 'lucide-react';
 import JSZip from 'jszip';
 import saveAs from 'file-saver';
@@ -33,7 +33,7 @@ const App: React.FC = () => {
     cols: 4
   });
 
-  // Auto-nav
+  // Auto-nav flow
   useEffect(() => {
     if (analysis && !spriteSheet && activeTab === 'ROOT') {
       setActiveTab('CONFIG');
@@ -104,7 +104,7 @@ const App: React.FC = () => {
       });
     } else if (format === 'unity') {
       const zip = new JSZip();
-      const folderName = analysis?.name.replace(/\s+/g, '_') || 'Character';
+      const folderName = (analysis?.name || 'Character').replace(/\s+/g, '_');
       const blob = await new Promise<Blob | null>(r => canvas.toBlob(r));
       if (!blob) return;
       
@@ -148,34 +148,31 @@ const App: React.FC = () => {
     saveAs(blob, `ANIMATION_${animationState}.gif`);
   };
 
-  // --- Styled Components ---
-
-  const WindowFrame = ({ title, children, className = "" }: any) => (
-    <div className={`window-frame flex flex-col ${className}`}>
-      <div className="window-header">
-        <span className="flex items-center gap-2"><Terminal size={12} /> {title}</span>
-        <div className="flex gap-1">
-          <div className="w-3 h-3 bg-fuchsia-300 border border-fuchsia-900 flex items-center justify-center cursor-pointer hover:bg-white"><Minimize2 size={8} className="text-black"/></div>
-          <div className="w-3 h-3 bg-fuchsia-300 border border-fuchsia-900 flex items-center justify-center cursor-pointer hover:bg-white"><Maximize2 size={8} className="text-black"/></div>
-          <div className="w-3 h-3 bg-red-500 border border-red-900 flex items-center justify-center cursor-pointer hover:bg-white"><X size={8} className="text-white"/></div>
+  const WindowFrame = ({ title, children, className = "", onClose }: any) => (
+    <div className={`window-frame flex flex-col shadow-[8px_8px_0_rgba(0,0,0,0.5)] ${className}`}>
+      <div className="window-header font-pixel text-[10px] tracking-[0.2em] py-2 px-3">
+        <span className="flex items-center gap-2 uppercase"><Terminal size={10} /> {title}</span>
+        <div className="flex gap-2">
+          <button className="w-3.5 h-3.5 bg-fuchsia-300 border border-black hover:bg-white transition-colors"></button>
+          <button className="w-3.5 h-3.5 bg-red-500 border border-black hover:bg-white transition-colors" onClick={onClose}></button>
         </div>
       </div>
-      <div className="flex-1 bg-[#090011] relative overflow-hidden flex flex-col">
+      <div className="flex-1 bg-[#05000a] relative flex flex-col p-1 overflow-hidden">
          {children}
       </div>
     </div>
   );
 
-  const TabButton = ({ id, label }: { id: Tab, label: string }) => (
+  const NavButton = ({ id, label }: { id: Tab, label: string }) => (
     <button 
       onClick={() => setActiveTab(id)}
       disabled={id === 'CONFIG' && !analysis || id === 'VISUALIZER' && !spriteSheet}
       className={`
-        px-4 py-2 text-sm font-pixel border-t-2 border-l-2 border-r-2 mr-1 transition-all
+        flex-1 text-center py-2 font-tech text-sm border-r border-fuchsia-950 last:border-0 transition-all uppercase tracking-widest
         ${activeTab === id 
-          ? 'bg-[#1a0b2e] border-fuchsia-400 text-fuchsia-200 -mb-[2px] z-10' 
-          : 'bg-[#0f0518] border-fuchsia-900 text-fuchsia-800 hover:text-fuchsia-500'}
-        ${(id === 'CONFIG' && !analysis || id === 'VISUALIZER' && !spriteSheet) ? 'opacity-50 cursor-not-allowed' : ''}
+          ? 'bg-fuchsia-900 text-white shadow-[inset_0_2px_10px_rgba(0,0,0,0.8)]' 
+          : 'bg-[#120524] text-fuchsia-800 hover:text-fuchsia-400 hover:bg-[#1a0b2e]'}
+        ${(id === 'CONFIG' && !analysis || id === 'VISUALIZER' && !spriteSheet) ? 'opacity-30 cursor-not-allowed grayscale' : ''}
       `}
     >
       {label}
@@ -183,119 +180,113 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen p-4 md:p-8 flex flex-col items-center justify-start gap-8">
+    <div className="min-h-screen p-4 md:p-12 flex flex-col items-center justify-center relative overflow-hidden bg-black">
        
-       {/* Main Banner */}
-       <div className="w-full max-w-6xl relative mb-4">
-          <div className="absolute -inset-1 bg-fuchsia-600 blur opacity-20"></div>
-          <div className="relative border-2 border-fuchsia-500 bg-black p-4 flex justify-between items-center">
-             <div>
-                <h1 className="text-3xl md:text-5xl font-pixel text-white glitch" data-text="SPRITE_FORGE_AI">SPRITE_FORGE_AI</h1>
-                <p className="text-fuchsia-400 font-tech text-sm tracking-[0.2em] mt-2">>> NEURAL_NET_V2.1 // ONLINE</p>
-             </div>
-             <div className="hidden md:flex gap-4 text-xs font-mono text-fuchsia-300">
-                <div className="flex flex-col items-end">
-                   <span>SYS_RAM: 64TB</span>
-                   <span>NET_SPD: 10GPS</span>
-                </div>
-                <div className="w-8 h-8 border border-fuchsia-500 bg-fuchsia-900 animate-pulse"></div>
-             </div>
-          </div>
+       {/* Ambient Tech Grid Background */}
+       <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute top-1/4 left-1/4 text-fuchsia-900/10 font-pixel text-[20vw] select-none mix-blend-screen -rotate-12">SYSTEM</div>
+          <div className="absolute bottom-1/4 right-1/4 text-fuchsia-900/10 font-pixel text-[20vw] select-none mix-blend-screen rotate-12">CORE</div>
        </div>
 
-       {/* Main Workspace */}
-       <div className="w-full max-w-6xl grid grid-cols-12 gap-6">
+       <div className="w-full max-w-7xl grid grid-cols-12 gap-8 relative z-10 items-stretch">
           
-          {/* Left Sidebar: Widgets */}
-          <div className="col-span-12 md:col-span-3 space-y-6">
+          {/* Sidebar Area */}
+          <div className="col-span-12 md:col-span-3 flex flex-col gap-6">
              
-             {/* Status Widget */}
-             <WindowFrame title="SYSTEM_LOG">
-                <div className="p-3 font-tech text-xs text-green-400 h-32 overflow-y-auto bg-black border-2 border-inset border-fuchsia-900">
-                   <div className="mb-1 text-gray-500">--- BEGIN LOG ---</div>
-                   <div>> Core Systems... OK</div>
-                   <div>> API Link... ESTABLISHED</div>
-                   {loadingStep !== 'idle' && <div className="text-yellow-400 animate-pulse">> PROCESS: {loadingStep}</div>}
-                   {analysis && <div className="text-cyan-400">> ENTITY_DATA [ACQUIRED]</div>}
-                   {spriteSheet && <div className="text-fuchsia-400">> RENDER [COMPLETE]</div>}
-                   <div className="animate-flicker mt-2">_</div>
+             {/* Header Display */}
+             <div className="border-2 border-fuchsia-500 bg-black p-6 text-center shadow-[6px_6px_0_#701a75]">
+                <h1 className="text-3xl font-pixel text-white glitch mb-2 tracking-tighter" data-text="FORGE_OS">FORGE_OS</h1>
+                <div className="h-0.5 bg-fuchsia-800 w-full mb-3 opacity-50"></div>
+                <div className="flex items-center justify-center gap-2 text-fuchsia-400 font-tech text-xs tracking-widest animate-pulse">
+                   <Activity size={12} />
+                   <span>NEURAL_LINK: ACTIVE</span>
                 </div>
-             </WindowFrame>
-
-             {/* Links Widget */}
-             <WindowFrame title="EXT_LINKS">
-                <div className="p-4 flex flex-col gap-2 bg-checkered">
-                   <button onClick={() => handleExport('png')} className="btn-retro py-2 px-3 text-xs font-bold text-fuchsia-200 flex items-center justify-between hover:text-white">
-                      <span>SAVE_IMG</span> <Save size={14} />
-                   </button>
-                   <button onClick={() => handleExport('unity')} className="btn-retro py-2 px-3 text-xs font-bold text-fuchsia-200 flex items-center justify-between hover:text-white">
-                      <span>UNITY_PKG</span> <Zap size={14} />
-                   </button>
-                   <button onClick={handleGifExport} className="btn-retro py-2 px-3 text-xs font-bold text-fuchsia-200 flex items-center justify-between hover:text-white">
-                      <span>EXP_GIF</span> <Disc size={14} />
-                   </button>
-                </div>
-             </WindowFrame>
-
-             {/* Deco Widget */}
-             <div className="border border-fuchsia-900 bg-black p-2 text-center opacity-70">
-                <img src="https://media.tenor.com/fSsxEHPuss8AAAAi/amoung-us-pixel-dance.gif" className="w-16 h-16 mx-auto mb-2 grayscale contrast-150" style={{imageRendering: 'pixelated'}} />
-                <div className="text-[10px] text-fuchsia-600 font-pixel">AD_SPACE_AVAIL</div>
              </div>
+
+             <WindowFrame title="PROCESS_LOG" className="h-64">
+                <div className="flex-1 bg-black p-3 font-tech text-[11px] text-fuchsia-400 overflow-y-auto custom-scrollbar border border-fuchsia-950">
+                   <div className="text-gray-700 italic mb-2 tracking-widest">>> SYSTEM_INIT_...</div>
+                   <div className="space-y-1">
+                      <div>> SENSORS: ONLINE</div>
+                      <div>> GRID_SYNC: CALIBRATED</div>
+                      {loadingStep !== 'idle' && <div className="text-yellow-500 animate-[pulse_0.8s_infinite]">> CURRENT_TASK: {loadingStep.toUpperCase()}</div>}
+                      {analysis && <div className="text-cyan-400">> ENTITY_LOADED: {analysis.name}</div>}
+                      {spriteSheet && <div className="text-green-500">> SPRITE_GRID: SUCCESS</div>}
+                      <div className="animate-pulse mt-2 inline-block w-2 h-4 bg-fuchsia-500"></div>
+                   </div>
+                </div>
+             </WindowFrame>
+
+             <WindowFrame title="DATA_EXPORT">
+                <div className="flex flex-col gap-2 p-2 bg-[#0a0214]">
+                   <button onClick={() => handleExport('png')} className="btn-retro py-3 px-3 text-[10px] font-pixel flex items-center justify-between group active:scale-95">
+                      <span className="group-hover:text-cyan-300 transition-colors uppercase">Save Raster</span> <Save size={12} />
+                   </button>
+                   <button onClick={() => handleExport('unity')} className="btn-retro py-3 px-3 text-[10px] font-pixel flex items-center justify-between group active:scale-95">
+                      <span className="group-hover:text-cyan-300 transition-colors uppercase">Unity Asset</span> <Zap size={12} />
+                   </button>
+                   <button onClick={handleGifExport} className="btn-retro py-3 px-3 text-[10px] font-pixel flex items-center justify-between group active:scale-95">
+                      <span className="group-hover:text-cyan-300 transition-colors uppercase">Build GIF</span> <Disc size={12} />
+                   </button>
+                </div>
+             </WindowFrame>
 
           </div>
 
-          {/* Center Stage: Main Application */}
-          <div className="col-span-12 md:col-span-9">
+          {/* Main Stage Area */}
+          <div className="col-span-12 md:col-span-9 flex flex-col">
              
-             {/* Tab Bar */}
-             <div className="flex border-b-2 border-fuchsia-500 mb-0 pl-2">
-                <TabButton id="ROOT" label="ROOT_ACCESS" />
-                <TabButton id="CONFIG" label="SYS_CONFIG" />
-                <TabButton id="VISUALIZER" label="VISUALIZER" />
-             </div>
-
-             {/* Main Window */}
-             <div className="window-frame min-h-[500px] border-t-0">
-                <div className="p-6 h-full flex flex-col bg-[#1a0b2e] relative">
-                   {/* Background Decor */}
-                   <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                      <Ghost size={120} className="text-fuchsia-500" />
+             <div className="window-frame flex-1 flex flex-col border-4">
+                <div className="window-header justify-between py-3">
+                   <span className="flex items-center gap-3 ml-2"><MonitorPlay size={14} className="text-cyan-400" /> VIRTUAL_PIXEL_ENGINE_V3</span>
+                   <div className="flex gap-4 mr-4 font-mono text-[9px] text-fuchsia-400/60 uppercase">
+                      <span>Thread_Active</span>
+                      <span className="text-green-500">Secure</span>
                    </div>
+                </div>
+                
+                {/* Workflow Navigation */}
+                <div className="flex bg-black border-b-2 border-fuchsia-950">
+                   <NavButton id="ROOT" label="01. Ingress" />
+                   <NavButton id="CONFIG" label="02. Compile" />
+                   <NavButton id="VISUALIZER" label="03. Visualize" />
+                </div>
+
+                {/* Interactive Content */}
+                <div className="flex-1 bg-[#05000a] relative p-8 flex flex-col overflow-hidden min-h-[550px]">
+                   <div className="absolute inset-0 opacity-10 bg-checker pointer-events-none"></div>
 
                    {activeTab === 'ROOT' && (
-                      <div className="flex flex-col h-full gap-6 relative z-10">
-                         <div className="border-b border-fuchsia-800 pb-2">
-                            <h2 className="text-xl font-pixel text-white mb-2 flex items-center gap-2">
-                               <Layers size={20} className="text-fuchsia-400" /> INJECTION_PORTAL
-                            </h2>
-                            <p className="font-tech text-fuchsia-300 text-sm">Upload reference entity for neural deconstruction.</p>
+                      <div className="flex-1 flex flex-col items-center justify-center relative z-10 gap-8">
+                         <div className="text-center">
+                            <h2 className="text-4xl font-pixel text-white mb-3 tracking-tighter">DATA_INGRESS</h2>
+                            <p className="font-tech text-fuchsia-600 text-lg uppercase tracking-[0.3em]">Supply Entity Reference</p>
                          </div>
-                         <div className="flex-1">
+                         <div className="w-full max-w-xl h-80 shadow-[0_0_50px_rgba(112,26,117,0.3)] border-2 border-fuchsia-900">
                             <Dropzone onImageSelected={handleImageUpload} isProcessing={loadingStep === 'analyzing'} />
-                         </div>
-                         <div className="text-xs font-mono text-fuchsia-700 text-center">
-                            SECURE CONNECTION // ENCRYPTED_SSL
                          </div>
                       </div>
                    )}
 
                    {activeTab === 'CONFIG' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full relative z-10">
+                      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
                          <AnalysisPanel analysis={analysis} loading={false} />
                          
-                         <div className="flex flex-col gap-4">
-                            <div className="bg-black border border-fuchsia-800 p-4 flex-1 overflow-hidden flex flex-col">
-                               <h3 className="text-sm font-pixel text-fuchsia-400 mb-4 border-b border-fuchsia-900 pb-2">RENDER_PROTOCOL</h3>
-                               <div className="overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                         <div className="flex flex-col gap-6">
+                            <div className="bg-black border-2 border-fuchsia-900 flex-1 flex flex-col shadow-inner">
+                               <div className="bg-fuchsia-950/40 p-3 border-b-2 border-fuchsia-900 text-xs font-pixel text-fuchsia-400 tracking-widest uppercase">Select Protocol</div>
+                               <div className="p-4 space-y-2 overflow-y-auto flex-1 custom-scrollbar">
                                   {Object.values(PixelStyle).map((style) => (
                                      <button 
                                         key={style}
                                         onClick={() => setConfig({...config, style})}
-                                        className={`w-full text-left p-2 border text-xs font-tech transition-all flex items-center gap-2 group ${config.style === style ? 'bg-fuchsia-900 border-fuchsia-400 text-white' : 'bg-transparent border-fuchsia-900 text-gray-400 hover:border-fuchsia-600'}`}
+                                        className={`w-full text-left p-3 border-2 font-tech text-xs tracking-widest transition-all flex items-center justify-between group ${config.style === style ? 'bg-fuchsia-900 border-fuchsia-500 text-white' : 'bg-transparent border-fuchsia-950 text-fuchsia-900 hover:border-fuchsia-800 hover:text-fuchsia-400'}`}
                                      >
-                                        <div className={`w-2 h-2 ${config.style === style ? 'bg-green-400 shadow-[0_0_5px_#4ade80]' : 'bg-gray-700'} rounded-full`}></div>
-                                        {style}
+                                        <div className="flex items-center gap-3">
+                                           <div className={`w-3 h-3 ${config.style === style ? 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-gray-900'}`} />
+                                           <span className="uppercase">{style}</span>
+                                        </div>
+                                        {config.style === style && <ArrowRight size={12} className="text-cyan-400" />}
                                      </button>
                                   ))}
                                </div>
@@ -304,12 +295,12 @@ const App: React.FC = () => {
                             <button 
                                onClick={handleGenerate}
                                disabled={loadingStep !== 'idle' && loadingStep !== 'complete'}
-                               className="btn-retro py-4 font-pixel text-sm text-fuchsia-200 hover:text-white flex items-center justify-center gap-2"
+                               className="btn-retro py-6 font-pixel text-sm text-fuchsia-100 hover:text-cyan-300 flex items-center justify-center gap-4 border-2 border-fuchsia-500 bg-[#120524] shadow-[0_0_20px_rgba(217,70,239,0.3)] transition-all active:scale-95"
                             >
                                {loadingStep === 'idle' || loadingStep === 'complete' ? (
-                                  <> <Cpu size={18} /> EXECUTE_RENDER </>
+                                  <> <Cpu size={20} /> INITIATE_RENDER_PROCESS </>
                                ) : (
-                                  <> <Skull size={18} className="animate-spin" /> COMPILING... </>
+                                  <> <Skull size={20} className="animate-spin text-red-500" /> RENDERING_FRAMES_... </>
                                )}
                             </button>
                          </div>
@@ -317,25 +308,23 @@ const App: React.FC = () => {
                    )}
 
                    {activeTab === 'VISUALIZER' && (
-                      <div className="h-full flex flex-col gap-4 relative z-10">
-                         <div className="flex justify-between items-center border-b border-fuchsia-800 pb-2">
-                            <h2 className="text-lg font-pixel text-white flex items-center gap-2">
-                               <MonitorPlay size={18} className="text-fuchsia-400" /> OUTPUT_MONITOR
-                            </h2>
-                            <div className="text-xs font-tech text-fuchsia-500">RES: 512x512 // 32-BIT</div>
-                         </div>
-                         
-                         <div className="flex-1 bg-black border-2 border-inset border-fuchsia-900 p-1">
-                            {spriteSheet && (
-                               <SpritePreview 
-                                  spriteSheetUrl={spriteSheet} 
-                                  sourceImageUrl={sourceImage}
-                                  config={config} 
-                                  animationState={animationState}
-                                  setAnimationState={setAnimationState}
-                               />
-                            )}
-                         </div>
+                      <div className="flex-1 flex flex-col relative z-10 h-full">
+                         {spriteSheet ? (
+                            <SpritePreview 
+                               spriteSheetUrl={spriteSheet} 
+                               sourceImageUrl={sourceImage}
+                               config={config} 
+                               animationState={animationState}
+                               setAnimationState={setAnimationState}
+                            />
+                         ) : (
+                            <div className="flex-1 border-4 border-dashed border-fuchsia-950 flex flex-col items-center justify-center text-fuchsia-900 font-pixel gap-4">
+                               <div className="w-20 h-20 border-4 border-fuchsia-950 animate-pulse flex items-center justify-center">
+                                  <X size={40} className="opacity-20" />
+                               </div>
+                               <span className="text-sm tracking-[0.5em] uppercase opacity-40">Static_Lost</span>
+                            </div>
+                         )}
                       </div>
                    )}
                 </div>
@@ -344,11 +333,18 @@ const App: React.FC = () => {
           </div>
        </div>
 
-       {/* Footer */}
-       <footer className="w-full max-w-6xl mt-8 border-t border-fuchsia-900 pt-4 pb-8 text-center">
-          <p className="font-tech text-xs text-fuchsia-700">
-             (C) 1999-2099 PIXEL_FORGE_SYSTEMS // DO NOT DISTRIBUTE // <span className="text-red-500 animate-pulse">NO SIGNAL</span>
-          </p>
+       {/* Floating OS Footer */}
+       <footer className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20">
+          <div className="bg-black/80 backdrop-blur-md border border-fuchsia-900 px-6 py-2 rounded-full flex items-center gap-6">
+             <div className="flex items-center gap-2 text-[10px] font-tech text-fuchsia-700">
+                <Layers size={12} />
+                <span>VER: 4.1.0-STABLE</span>
+             </div>
+             <div className="h-4 w-px bg-fuchsia-900"></div>
+             <div className="text-[10px] font-tech text-fuchsia-500 uppercase tracking-widest">
+                FORGE_NET // ACCESS_GRANTED
+             </div>
+          </div>
        </footer>
 
     </div>

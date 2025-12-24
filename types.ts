@@ -6,7 +6,11 @@ export enum PixelStyle {
   Cyberpunk = 'Cyberpunk (Neon)',
   GrimDark = 'Grim Dark (Gothic)',
   Chibi = 'Chibi (Cute/Kawaii)',
-  PlayStation = '32-bit (Pre-rendered Style)'
+  PlayStation = '32-bit (Pre-rendered Style)',
+  Vaporwave = 'Vaporwave (Retro-Future)',
+  ASCII = 'ASCII Art (Terminal)',
+  DitheredMonochrome = 'Dithered Mono (1-bit)',
+  Anime = 'Anime Pixel (Modern)'
 }
 
 export enum AnimationState {

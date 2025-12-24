@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Upload, FileCode, AlertCircle } from 'lucide-react';
+import { Upload, FileCode, AlertCircle, ArrowDown } from 'lucide-react';
 
 interface DropzoneProps {
   onImageSelected: (base64: string) => void;
@@ -49,7 +49,7 @@ const Dropzone: React.FC<DropzoneProps> = ({ onImageSelected, isProcessing }) =>
 
   return (
     <div 
-      className={`relative w-full h-full min-h-[300px] transition-all duration-100 group cursor-pointer bg-black
+      className={`relative w-full h-full transition-all duration-100 group cursor-pointer bg-black
         ${isProcessing ? 'opacity-50 pointer-events-none' : ''}
       `}
       onDragEnter={handleDrag}
@@ -66,35 +66,39 @@ const Dropzone: React.FC<DropzoneProps> = ({ onImageSelected, isProcessing }) =>
         onChange={handleChange}
       />
       
-      {/* Animated Border */}
+      {/* Tech Border Container */}
       <div className={`absolute inset-0 border-2 border-dashed
-         ${dragActive ? 'border-fuchsia-400 bg-fuchsia-900/20' : 'border-fuchsia-800 hover:border-fuchsia-600'}
+         ${dragActive ? 'border-fuchsia-400 bg-fuchsia-900/20' : 'border-fuchsia-900 hover:border-fuchsia-600'}
          transition-colors
       `}>
-         {/* Corner Accents */}
-         <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-fuchsia-400"></div>
-         <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-fuchsia-400"></div>
-         <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-fuchsia-400"></div>
-         <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-fuchsia-400"></div>
+         {/* Animated Reticle Corners */}
+         <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-fuchsia-500"></div>
+         <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-fuchsia-500"></div>
+         <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-fuchsia-500"></div>
+         <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-fuchsia-500"></div>
         
         {/* Content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-           <div className={`p-4 border border-fuchsia-600 rounded-full ${isProcessing ? 'animate-spin border-t-transparent' : ''}`}>
-              <FileCode size={48} className={`text-fuchsia-400 ${dragActive ? 'scale-110' : ''}`} />
+           <div className={`w-16 h-16 border border-fuchsia-700 bg-[#0a0214] flex items-center justify-center relative ${dragActive ? 'scale-110' : ''} transition-transform`}>
+              {isProcessing ? (
+                 <div className="w-8 h-8 border-2 border-fuchsia-500 border-t-transparent animate-spin"></div>
+              ) : (
+                 <ArrowDown size={24} className="text-fuchsia-500 animate-bounce" />
+              )}
            </div>
            
            <div className="text-center font-tech">
-              <h3 className="text-lg text-fuchsia-200 mb-1 tracking-wider">
-                 {isProcessing ? "UPLOADING_PACKET..." : "INITIATE_TRANSFER"}
+              <h3 className="text-sm text-fuchsia-200 mb-1 tracking-wider uppercase">
+                 {isProcessing ? "PROCESSING_STREAM..." : "INITIATE_UPLOAD"}
               </h3>
-              <p className="text-xs text-fuchsia-600">
-                 [DRAG_AND_DROP] OR [CLICK_TO_BROWSE]
+              <p className="text-[10px] text-fuchsia-700 uppercase">
+                 [DROP_FILE] OR [CLICK_TO_BROWSE]
               </p>
            </div>
            
            {isProcessing && (
-              <div className="w-48 h-1 bg-fuchsia-900 mt-2 overflow-hidden">
-                 <div className="h-full bg-fuchsia-400 w-1/3 animate-[pulse_1s_infinite] translate-x-[-100%]"></div>
+              <div className="w-32 h-1 bg-fuchsia-900 overflow-hidden">
+                 <div className="h-full bg-fuchsia-400 w-1/2 animate-[pulse_0.5s_infinite]"></div>
               </div>
            )}
         </div>
